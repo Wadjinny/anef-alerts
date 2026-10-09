@@ -21,11 +21,17 @@ uv sync
 ANEF_LOGIN=votre numéro de visa / titre de séjour
 ANEF_PASSWORD=votre mot de passe ANEF
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-CHECK_INTERVAL_MINUTES=30
+CHECK_SCHEDULE=30
 ```
 
 Pour créer un webhook Discord : Paramètres du serveur → Intégrations →
 Webhooks → Nouveau webhook → Copier l'URL.
+
+`CHECK_SCHEDULE` accepte :
+- un **nombre de minutes** : `CHECK_SCHEDULE=30` (vérifie toutes les 30 min)
+- ou une **expression cron à 5 champs** : `CHECK_SCHEDULE=0 8-20 * * *`
+  (toutes les heures entre 8h et 20h), `CHECK_SCHEDULE=*/15 9-18 * * 1-5`
+  (toutes les 15 min, 9h-18h, du lundi au vendredi), etc.
 
 **Le mot de passe est stocké en clair dans `.env`** (fichier gitignored).
 Ne le committez jamais, et gardez ce fichier sur une machine de confiance.
@@ -33,7 +39,7 @@ Ne le committez jamais, et gardez ce fichier sur une machine de confiance.
 ## Lancement
 
 ```bash
-uv run python main.py                # boucle en continu (intervalle CHECK_INTERVAL_MINUTES)
+uv run python main.py                # boucle en continu (planification CHECK_SCHEDULE)
 uv run python main.py --once         # une seule vérification, puis quitte
 uv run python main.py --status       # affiche le dernier état connu (pas d'appel réseau)
 uv run python main.py --test-login   # teste la connexion ANEF + affiche le statut courant

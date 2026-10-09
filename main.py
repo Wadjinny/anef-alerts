@@ -6,7 +6,8 @@ Configuration via .env (voir .env.example) :
   ANEF_LOGIN               numéro de visa/titre de séjour utilisé pour se connecter
   ANEF_PASSWORD            mot de passe du compte ANEF
   DISCORD_WEBHOOK_URL      URL du webhook Discord
-  CHECK_INTERVAL_MINUTES   intervalle entre deux vérifications (def. 30)
+  CHECK_SCHEDULE           nombre de minutes (ex: "30") OU expression cron à 5
+                           champs (ex: "*/30 * * * *", "0 8-20 * * *") (def. 30)
 """
 
 import argparse
@@ -29,13 +30,14 @@ from status_data import get_status_explanation
 from state import load_state, save_state, reset_state, STATE_FILE
 from discord_notifier import send_status_change, send_error, send_webhook
 from utils import format_dt_fr
+from schedule import validate_schedule, describe_schedule, sleep_seconds_until_next, next_run_after
 
 load_dotenv()
 
 ANEF_LOGIN = os.environ.get("ANEF_LOGIN")
 ANEF_PASSWORD = os.environ.get("ANEF_PASSWORD")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
-CHECK_INTERVAL_MINUTES = float(os.environ.get("CHECK_INTERVAL_MINUTES", "30"))
+CHECK_SCHEDULE = os.environ.get("CHECK_SCHEDULE", "30")
 
 
 def log(message: str):
@@ -183,7 +185,14 @@ def main():
 
     require_env("ANEF_LOGIN", "ANEF_PASSWORD", "DISCORD_WEBHOOK_URL")
 
-    log(f"Démarrage. Intervalle : {CHECK_INTERVAL_MINUTES} min." if not args.once else "Démarrage (mode --once).")
+    if not args.once:
+        try:
+            validate_schedule(CHECK_SCHEDULE)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
+
+    log(f"Démarrage. Planification : {describe_schedule(CHECK_SCHEDULE)}." if not args.once else "Démarrage (mode --once).")
 
     while True:
         try:
@@ -203,7 +212,11 @@ def main():
 
         if args.once:
             break
-        time.sleep(CHECK_INTERVAL_MINUTES * 60)
+
+        now = datetime.now()
+        wait_seconds = sleep_seconds_until_next(CHECK_SCHEDULE, now)
+        log(f"Prochaine vérification : {format_dt_fr(next_run_after(CHECK_SCHEDULE, now), include_seconds=True)}")
+        time.sleep(wait_seconds)
 
 
 if __name__ == "__main__":
