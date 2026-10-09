@@ -49,3 +49,7 @@ def send_status_change(webhook_url: str, status_info: dict, previous_info: dict 
 
 def send_error(webhook_url: str, message: str):
     send_webhook(webhook_url, content=f"⚠️ **ANEF Status Tracker** — {message}")
+
+
+def send_recovery(webhook_url: str, message: str = "les vérifications fonctionnent à nouveau."):
+    send_webhook(webhook_url, content=f"✅ **ANEF Status Tracker** — Rétabli : {message}")

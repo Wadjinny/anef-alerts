@@ -106,7 +106,7 @@ class AnefClient:
         if not code:
             if resp.status_code == 200:
                 err = KC_ERROR_RE.search(resp.text)
-                raise AnefAuthError(err.group(1).strip() if err else "Identifiants refusés par Keycloak.")
+                raise AnefAuthError(html.unescape(err.group(1).strip()) if err else "Identifiants refusés par Keycloak.")
             raise AnefAuthError(f"Code d'autorisation introuvable (HTTP {resp.status_code}).")
 
         resp = self._client.post(TOKEN_EXCHANGE_URL, json={"code": code, "uri": REDIRECT_URI})

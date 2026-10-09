@@ -78,6 +78,7 @@ credentials.json
 
 # Project-local state
 state.json
+anef-notifier.log
 
 # Editors
 .vscode/

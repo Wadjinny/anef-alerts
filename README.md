@@ -56,7 +56,9 @@ statut, pas à chaque vérification. Ce fichier contient :
   "statutCode": "...",         // code de statut interne (status_data.py)
   "dateStatut": "...",         // date à laquelle ANEF a changé le statut
   "lastChangedAt": "...",      // quand CE script a détecté le changement
-  "lastCheckedAt": "..."       // dernière vérification (changement ou non)
+  "lastCheckedAt": "...",      // dernière vérification (changement ou non)
+  "lastErrorKey": "...",       // problème en cours (null si tout va bien)
+  "lastErrorAt": "..."         // quand ce problème est apparu
 }
 ```
 
@@ -65,6 +67,22 @@ la date du changement côté ANEF (« Statut depuis le ») et l'heure de la
 vérification (pied de page). Note : après un `--reset`, la vérification
 suivante traite le statut courant comme un « premier changement » et envoie
 donc une notification même si rien n'a réellement changé côté ANEF.
+
+## Logs et gestion des erreurs
+
+Chaque exécution écrit dans `anef-notifier.log` (créé automatiquement, à côté
+de `state.json`), en plus de la sortie standard. Ce fichier est tronqué aux
+`LOG_MAX_LINES` dernières lignes (def. 5000) à chaque écriture : il ne grossit
+donc jamais indéfiniment sur un service qui tourne en continu.
+
+Un problème (échec de connexion ANEF, erreur réseau, API ANEF qui ne renvoie
+rien d'exploitable...) est traité comme un **état**, au même titre que le
+statut du dossier : il est enregistré dans `state.json` (`lastErrorKey`) et
+n'envoie une alerte Discord qu'à son **apparition**, pas à chaque vérification
+suivante tant qu'il persiste — sinon une panne de plusieurs heures spamerait
+un message toutes les `CHECK_SCHEDULE`. Dès que la vérification suivante
+réussit, un message « ✅ Rétabli » est envoyé une seule fois et l'état est
+nettoyé. `--status` affiche un problème en cours s'il y en a un.
 
 ## Limites connues
 
@@ -76,5 +94,6 @@ donc une notification même si rien n'a réellement changé côté ANEF.
 - Pas de garde-fou anti-régression (contrairement à l'extension) : si l'API
   renvoie ponctuellement un statut en retrait, une (fausse) notification de
   recul peut partir. En pratique, rare.
-- Un échec de connexion (mauvais mot de passe, compte verrouillé, 2FA...)
-  envoie une alerte Discord dédiée au lieu de planter silencieusement.
+- Si le processus lui-même s'arrête (crash, redémarrage du serveur, session
+  tmux tuée), rien ne le relance automatiquement : ni systemd, ni cron. À
+  surveiller si le script tourne sans supervision sur un serveur.
