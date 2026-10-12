@@ -2,13 +2,30 @@
 Planification des vérifications : CHECK_SCHEDULE accepte soit un
 nombre de minutes (ex: "30"), soit une expression cron à 5 champs
 (ex: "*/30 * * * *", "0 8-20 * * *" pour une vérification horaire entre 8h et
-20h). Le choix se fait simplement en essayant de parser la valeur comme un
-nombre ; si ça échoue, on la traite comme une expression cron.
+20h, heure française). Le choix se fait simplement en essayant de parser la
+valeur comme un nombre ; si ça échoue, on la traite comme une expression cron.
+
+Les champs heure/jour d'une expression cron sont TOUJOURS interprétés en
+heure française (Europe/Paris), quel que soit le fuseau du serveur qui
+exécute le script (souvent UTC sur un VPS) — sinon "6-23" ne voudrait pas dire
+la même chose en local qu'en production.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from croniter import croniter, CroniterBadCronError
+
+from utils import PARIS
+
+
+def _as_paris(dt: datetime) -> datetime:
+    """Convertit `dt` en heure de Paris avant de la donner à croniter. Une
+    datetime naïve est supposée exprimer l'heure locale du système (ex: UTC
+    sur le VPS) ; une datetime consciente de son fuseau est convertie
+    normalement."""
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
+    return dt.astimezone(PARIS)
 
 
 def is_cron_expression(raw: str) -> bool:
@@ -48,14 +65,13 @@ def next_run_after(raw: str, now: datetime) -> datetime:
     (sleep_seconds_until recalcule indépendamment)."""
     raw = raw.strip()
     if is_cron_expression(raw):
-        return croniter(raw, now).get_next(datetime)
-    from datetime import timedelta
+        return croniter(raw, _as_paris(now)).get_next(datetime)
     return now + timedelta(minutes=float(raw))
 
 
 def sleep_seconds_until_next(raw: str, now: datetime) -> float:
     raw = raw.strip()
     if is_cron_expression(raw):
-        next_run = croniter(raw, now).get_next(datetime)
-        return max(0.0, (next_run - now).total_seconds())
+        next_run = croniter(raw, _as_paris(now)).get_next(datetime)
+        return max(0.0, (next_run - _as_paris(now)).total_seconds())
     return float(raw) * 60

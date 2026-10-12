@@ -9,12 +9,17 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from utils import PARIS
+
 LOG_FILE = Path(__file__).parent / "anef-notifier.log"
 LOG_MAX_LINES = int(os.environ.get("LOG_MAX_LINES", "5000"))
 
 
 def log(message: str):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Toujours en heure française, même si le serveur tourne en UTC (cas
+    # courant sur un VPS) : évite un log à deux fuseaux différents selon la
+    # ligne (voir schedule.py pour la même logique côté planification).
+    timestamp = datetime.now(PARIS).strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp}] {message}"
     print(line, flush=True)
     _append_and_trim(line)
